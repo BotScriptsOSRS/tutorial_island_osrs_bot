@@ -1,5 +1,7 @@
 package states;
 
+import org.osbot.rs07.api.Settings;
+import org.osbot.rs07.api.map.Area;
 import org.osbot.rs07.api.map.Position;
 import org.osbot.rs07.api.model.NPC;
 import org.osbot.rs07.api.model.RS2Object;
@@ -17,16 +19,25 @@ public class GielinorGuideInteraction {
     private final Position outsideDoor = new Position(3098, 3107, 0);
     private final Random random = new Random();
 
+    private final Area houseOfGielinorGuide = new Area(3087, 3100, 3097, 3112);
+
     public GielinorGuideInteraction(Script script) {
         this.script = script;
         this.widgetHandler = new WidgetHandler(script);
     }
 
     public boolean performInteraction() throws InterruptedException {
-        return talkToGielinorGuide() &&
-                configureGameSettings() &&
-                talkToGielinorGuide() &&
-                interactWithClosestDoor();
+        if (!houseOfGielinorGuide.contains(script.myPlayer().getPosition())) {
+            script.log("Skipping state, already completed");
+            return true;
+        } else if (!widgetHandler.isWidgetVisible("Settings", false) && talkToGielinorGuide()){
+            widgetHandler.waitForWidget("Settings", false);
+        } else if (!widgetHandler.isWidgetVisible("Unmute", false) && configureGameSettings()){
+            widgetHandler.waitForWidgetToDisappear("Mute", false);
+        } else {
+            return talkToGielinorGuide() && interactWithClosestDoor();
+        }
+        return false;
     }
 
     private boolean talkToGielinorGuide() throws InterruptedException {
@@ -65,11 +76,13 @@ public class GielinorGuideInteraction {
         }
     }
 
-
     private boolean configureGameSettings() throws InterruptedException {
         script.log("Configure game settings");
-        if (openAndVerifySettings()) {
-            adjustGameSettings();
+        if (!script.getSettings().areRoofsEnabled() && openAndVerifySettings()){
+            enableHideRoofs();
+            enableShiftClickDrop();
+            closeSettings();
+            adjustAudioSettings();
             return true;
         }
         return false;
@@ -89,32 +102,18 @@ public class GielinorGuideInteraction {
         return widgetHandler.isWidgetVisible("All Settings", false);
     }
 
-    private void adjustGameSettings() throws InterruptedException {
-        openAllSettings();
-        enableHideRoofs();
-        enableShiftClickDrop();
-        closeSettings();
-        adjustAudioSettings();
-    }
-
-    private void openAllSettings() {
-        script.log("Opening all settings");
-        widgetHandler.clickWidget("All Settings");
-        widgetHandler.waitForWidget("Settings", true);
-    }
-
     private void enableHideRoofs() {
         script.log("Enabling hide roofs");
-        widgetHandler.waitForWidget("Hide roofs", true);
-        widgetHandler.clickWidgetWithMessage("Hide roofs");
+        if (!script.getSettings().areRoofsEnabled()){
+            script.getSettings().setSetting(Settings.AllSettingsTab.DISPLAY, "Hide roofs", true);
+        }
     }
 
     private void enableShiftClickDrop() {
         script.log("Opening controls settings");
-        widgetHandler.clickWidget("Select <col=ff981f>Controls");
-        widgetHandler.waitForWidget("Shift click to drop items", true);
-        script.log("Enabling Shift click to drop items");
-        widgetHandler.clickWidgetWithMessage("Shift click to drop items");
+        if (!script.getSettings().isShiftDropActive()){
+            script.getSettings().setSetting(Settings.AllSettingsTab.CONTROLS, "Shift click to drop items", true);
+        }
     }
 
     private void closeSettings() {

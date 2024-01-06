@@ -18,8 +18,9 @@ public class CharacterCreation {
     }
 
     public boolean performCreation() throws InterruptedException {
-        if (!widgetHandler.isWidgetVisible("Choose display name", true)){
-            script.log("Character setup is already done");
+        if (!widgetHandler.isWidgetVisible("Choose display name", true) ||
+            !widgetHandler.isWidgetVisible("Confirm", false)){
+            script.log("Skipping state, already completed");
             return true;
         } else if (!isNameSet() ) {
             attemptToSetName();
