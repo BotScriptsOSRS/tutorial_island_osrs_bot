@@ -1,51 +1,46 @@
 import org.osbot.rs07.script.Script;
 import org.osbot.rs07.script.ScriptManifest;
-import utils.NameGenerator;
-import utils.Sleep;
-
-import utils.WidgetHandler;
+import states.CharacterCreation;
+import states.GielinorGuideInteraction;
+import states.ScriptState;
 
 @ScriptManifest(name = "Tutorial Island", author = "BotScriptsOSRS", version = 1.0, info = "", logo = "")
 public class MainScript extends Script {
-
-    private WidgetHandler widgetHandler;
-    private NameGenerator nameGenerator;
+    private ScriptState currentState;
+    private CharacterCreation characterCreation;
+    private GielinorGuideInteraction gielinorGuideInteraction;
 
     @Override
     public void onStart() {
-        this.widgetHandler = new WidgetHandler(this);
-        this.nameGenerator = new NameGenerator();
+        characterCreation = new CharacterCreation(this);
+        gielinorGuideInteraction = new GielinorGuideInteraction(this);
+
+        currentState = ScriptState.CHARACTER_CREATION;
     }
 
     @Override
     public int onLoop() throws InterruptedException {
-        setName();
-        completeCharacterSetup();
+        switch (currentState) {
+            case CHARACTER_CREATION:
+                log("Create character State");
+                if (characterCreation.performCreation()) {
+                    currentState = ScriptState.GIELINOR_GUIDE;
+                }
+                break;
+            case GIELINOR_GUIDE:
+                log("Gielinor Guide State");
+                if (gielinorGuideInteraction.performInteraction()) {
+                    currentState = ScriptState.NEXT_STAGE;
+                }
+                break;
+            // Add other cases for additional states
+        }
         return random(200, 300);
     }
 
-    private void setName() {
-        if (widgetHandler.isNameWidgetWorking()) {
-            log("Trying to write name");
-            String randomName = nameGenerator.generateRandomName();
-            getKeyboard().typeString(randomName);
-            Sleep.sleepUntil(() -> !widgetHandler.isDisplayNameWidgetVisible() || widgetHandler.isSetNameWidgetAvailable(), 5000);
-        }
-        if (widgetHandler.isSetNameWidgetAvailable()){
-            log("Name already exists, picking random name");
-            widgetHandler.getRandomSetNameWidget().interact();
-            Sleep.sleepUntil(() -> widgetHandler.isGreatWidgetVisible(), 5000);
-            if (widgetHandler.isSetNameWidgetAvailable() && widgetHandler.getRandomSetNameWidget().interact()){
-                Sleep.sleepUntil(() -> !widgetHandler.isDisplayNameWidgetVisible(), 5000);
-            }
-        }
-    }
-
-    private void completeCharacterSetup() throws InterruptedException {
-        if (widgetHandler.waitForConfirmWidget()) {
-            widgetHandler.interactWithFemaleRandomly();
-            widgetHandler.interactWithSelectWidgets();
-            widgetHandler.clickConfirmWidget();
-        }
+    @Override
+    public void onExit() {
+        stop();
     }
 }
+

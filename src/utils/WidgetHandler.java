@@ -5,89 +5,85 @@ import org.osbot.rs07.script.MethodProvider;
 import org.osbot.rs07.script.Script;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class WidgetHandler {
 
     private final Script script;
+    private final Random random = new Random();
 
     public WidgetHandler(Script script) {
         this.script = script;
     }
 
-    public boolean isDisplayNameWidgetVisible() {
-        return getWidget("Set display name", true) != null;
+    public boolean isWidgetVisible(String actionOrMessage, boolean isMessage) {
+        return findWidget(actionOrMessage, isMessage).isPresent();
     }
 
-    public boolean isSetNameWidgetAvailable() {
-        return getWidget("Set name", false) != null;
+    public Optional<RS2Widget> getRandomWidgetWithAction(String action) {
+        List<RS2Widget> widgets = script.getWidgets().getAll().stream()
+                .filter(widget -> widget.isVisible() && widget.hasAction(action))
+                .collect(Collectors.toList());
+        return widgets.isEmpty() ? Optional.empty() : Optional.of(widgets.get(random.nextInt(widgets.size())));
     }
 
-    public RS2Widget getRandomSetNameWidget() {
-        List<RS2Widget> setNameWidgets = script.getWidgets().filter(
-                script.getWidgets().getAll(),
-                widget -> widget.isVisible() && widget.hasAction("Set name")
-        );
-        return !setNameWidgets.isEmpty() ? setNameWidgets.get(new Random().nextInt(setNameWidgets.size())) : null;
+    public Optional<RS2Widget> findWidget(String actionOrMessage, boolean isMessage) {
+        Predicate<RS2Widget> predicate = widget -> widget.isVisible() &&
+                (isMessage ? widget.getMessage().contains(actionOrMessage) : widget.hasAction(actionOrMessage));
+        return script.getWidgets().getAll().stream().filter(predicate).findFirst();
     }
 
-    public boolean isNameWidgetWorking() {
-        RS2Widget nameWidget = getNameWidget();
-        return nameWidget != null && nameWidget.isVisible();
+    public boolean waitForWidget(String actionOrMessage, boolean isMessage) {
+        return Sleep.sleepUntil(() -> isWidgetVisible(actionOrMessage, isMessage), 5000);
     }
 
-    public RS2Widget getNameWidget() {
-        return script.getWidgets().singleFilter(
-                script.getWidgets().getAll(),
-                widget -> widget.isVisible() && widget.getMessage().contains("*"));
+    public boolean waitForWidgetToDisappear(String actionOrMessage, boolean isMessage) {
+        return Sleep.sleepUntil(() -> !isWidgetVisible(actionOrMessage, isMessage), 5000);
     }
 
-    private RS2Widget getWidget(String actionOrMessage, boolean isMessage) {
-        return script.getWidgets().singleFilter(
-                script.getWidgets().getAll(),
-                widget -> widget.isVisible() && (isMessage ? widget.getMessage().contains(actionOrMessage) : widget.hasAction(actionOrMessage))
-        );
-    }
-
-    public boolean isGreatWidgetVisible() {
-        return script.getWidgets().singleFilter(
-                script.getWidgets().getAll(),
-                widget -> widget.isVisible() && widget.getMessage().contains("Great!")) != null;
-    }
-    public boolean waitForConfirmWidget() {
-        return Sleep.sleepUntil(() -> getWidget("Confirm", false) != null, 15000);
-    }
-
-    public void interactWithFemaleRandomly() {
-        if (new Random().nextBoolean()) {
-            RS2Widget femaleWidget = getWidget("Female", false);
-            if (femaleWidget != null) {
-                femaleWidget.interact();
+    public void interactWithWidgetRandomly(String action) {
+        getRandomWidgetWithAction(action).ifPresent(widget -> {
+            if (random.nextBoolean()) {
+                widget.interact();
             }
-        }
+        });
     }
 
-    public void interactWithSelectWidgets() throws InterruptedException {
-        Random random = new Random();
-        List<RS2Widget> selectWidgets = script.getWidgets().filter(
-                script.getWidgets().getAll(),
-                widget -> widget.isVisible() && widget.hasAction("Select")
-        );
-
-        for (RS2Widget selectWidget : selectWidgets) {
-            int interactions = random.nextInt(4); // Random number between 0 and 3
+    public void interactWithAllSelectWidgets() throws InterruptedException {
+        List<RS2Widget> selectWidgets = script.getWidgets().getAll().stream()
+                .filter(widget -> widget.isVisible() && widget.hasAction("Select"))
+                .collect(Collectors.toList());
+        for (RS2Widget widget : selectWidgets) {
+            int interactions = random.nextInt(4);
             for (int i = 0; i < interactions; i++) {
-                if (selectWidget.interact()) {
-                    MethodProvider.sleep(random.nextInt(1000) + 1000); // Sleep for 1-2 seconds after each interaction
+                if (widget.interact()) {
+                    MethodProvider.sleep(random.nextInt(300) + 200);
                 }
             }
         }
     }
 
-    public void clickConfirmWidget() {
-        RS2Widget confirmWidget = getWidget("Confirm", false);
-        if (confirmWidget != null) {
-            confirmWidget.interact();
+    public void clickWidget(String action) {
+        findWidget(action, false).ifPresent(RS2Widget::interact);
+    }
+
+    public boolean clickWidgetWithMessage(String message) {
+        Optional<RS2Widget> widgetOptional = findWidget(message, true);
+        return widgetOptional.map(RS2Widget::interact).orElse(false);
+    }
+
+    public void clickAllWidgetsWithAction(String action) throws InterruptedException {
+        List<RS2Widget> widgets = script.getWidgets().getAll().stream()
+                .filter(widget -> widget.isVisible() && widget.hasAction(action))
+                .collect(Collectors.toList());
+
+        for (RS2Widget widget : widgets) {
+            if (widget.interact()) {
+                MethodProvider.sleep(random.nextInt(300) + 200); // Sleep between interactions
+            }
         }
     }
 }
