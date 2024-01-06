@@ -1,7 +1,6 @@
 package utils;
 
 import org.osbot.rs07.api.ui.RS2Widget;
-import org.osbot.rs07.script.MethodProvider;
 import org.osbot.rs07.script.Script;
 
 import java.util.List;
@@ -36,12 +35,27 @@ public class WidgetHandler {
         return script.getWidgets().getAll().stream().filter(predicate).findFirst();
     }
 
+    public boolean clickWidgetWithSpellName(String action, String spellName) {
+        Optional<RS2Widget> widgetOptional = findWidgetWithSpellName(action, spellName);
+        return widgetOptional.map(RS2Widget::interact).orElse(false);
+    }
+
+    public Optional<RS2Widget> findWidgetWithSpellName(String action, String spellName) {
+        Predicate<RS2Widget> predicate = widget ->
+                widget.isVisible() &&
+                        widget.hasAction(action) &&
+                        (spellName == null || widget.getSpellName().equals(spellName));
+
+        return script.getWidgets().getAll().stream().filter(predicate).findFirst();
+    }
+
+
     public boolean waitForWidget(String actionOrMessage, boolean isMessage) {
-        return Sleep.sleepUntil(() -> isWidgetVisible(actionOrMessage, isMessage), 5000);
+        return Sleep.until(() -> isWidgetVisible(actionOrMessage, isMessage));
     }
 
     public boolean waitForWidgetToDisappear(String actionOrMessage, boolean isMessage) {
-        return Sleep.sleepUntil(() -> !isWidgetVisible(actionOrMessage, isMessage), 5000);
+        return Sleep.until(() -> !isWidgetVisible(actionOrMessage, isMessage));
     }
 
     public void interactWithWidgetRandomly(String action) {
@@ -52,7 +66,7 @@ public class WidgetHandler {
         });
     }
 
-    public void interactWithAllSelectWidgets() throws InterruptedException {
+    public void interactWithAllSelectWidgets() {
         List<RS2Widget> selectWidgets = script.getWidgets().getAll().stream()
                 .filter(widget -> widget.isVisible() && widget.hasAction("Select"))
                 .collect(Collectors.toList());
@@ -60,14 +74,15 @@ public class WidgetHandler {
             int interactions = random.nextInt(4);
             for (int i = 0; i < interactions; i++) {
                 if (widget.interact()) {
-                    MethodProvider.sleep(random.nextInt(300) + 200);
+                    Sleep.randomSleep(200, 300);
                 }
             }
         }
     }
 
-    public void clickWidget(String action) {
-        findWidget(action, false).ifPresent(RS2Widget::interact);
+    public boolean clickWidget(String action) {
+        Optional<RS2Widget> widgetOptional = findWidget(action, false);
+        return widgetOptional.map(RS2Widget::interact).orElse(false);
     }
 
     public boolean clickWidgetWithMessage(String message) {
@@ -75,15 +90,24 @@ public class WidgetHandler {
         return widgetOptional.map(RS2Widget::interact).orElse(false);
     }
 
-    public void clickAllWidgetsWithAction(String action) throws InterruptedException {
+    public void clickAllWidgetsWithAction(String action) {
         List<RS2Widget> widgets = script.getWidgets().getAll().stream()
                 .filter(widget -> widget.isVisible() && widget.hasAction(action))
                 .collect(Collectors.toList());
 
         for (RS2Widget widget : widgets) {
             if (widget.interact()) {
-                MethodProvider.sleep(random.nextInt(300) + 200); // Sleep between interactions
+                Sleep.randomSleep(200, 300);
             }
         }
+    }
+
+    public boolean openTab(String tab) {
+        if (isWidgetVisible(tab, false)) {
+            clickWidget(tab);
+            Sleep.randomSleep(200, 300);
+            return true;
+        }
+        return false;
     }
 }

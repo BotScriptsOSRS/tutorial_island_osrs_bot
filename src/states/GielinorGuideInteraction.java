@@ -3,82 +3,68 @@ package states;
 import org.osbot.rs07.api.Settings;
 import org.osbot.rs07.api.map.Area;
 import org.osbot.rs07.api.map.Position;
-import org.osbot.rs07.api.model.NPC;
-import org.osbot.rs07.api.model.RS2Object;
-import org.osbot.rs07.script.MethodProvider;
 import org.osbot.rs07.script.Script;
-import utils.Sleep;
+import utils.DialogueHelper;
+import utils.ObjectHandler;
 import utils.WidgetHandler;
 
 import java.awt.event.KeyEvent;
-import java.util.Random;
+import java.util.Collections;
+import java.util.List;
 
 public class GielinorGuideInteraction {
     private final Script script;
     private final WidgetHandler widgetHandler;
+    private final ObjectHandler objectHandler;
     private final Position outsideDoor = new Position(3098, 3107, 0);
-    private final Random random = new Random();
-
     private final Area houseOfGielinorGuide = new Area(3087, 3100, 3097, 3112);
+    private final DialogueHelper dialogueHelper;
+    private boolean talkedToGielinorGuideFirstTime = false;
+    private boolean gameSettingsConfigured = false;
+    private boolean talkedToGielinorGuideSecondTime = false;
+    private boolean leftHouse = false;
 
-    public GielinorGuideInteraction(Script script) {
+    public GielinorGuideInteraction(Script script, WidgetHandler widgetHandler, ObjectHandler objectHandler, DialogueHelper dialogueHelper) {
         this.script = script;
-        this.widgetHandler = new WidgetHandler(script);
+        this.widgetHandler = widgetHandler;
+        this.objectHandler = objectHandler;
+        this.dialogueHelper = dialogueHelper;
     }
 
-    public boolean performInteraction() throws InterruptedException {
+    public boolean performInteraction() {
         if (!houseOfGielinorGuide.contains(script.myPlayer().getPosition())) {
             script.log("Skipping state, already completed");
             return true;
-        } else if (!widgetHandler.isWidgetVisible("Settings", false) && talkToGielinorGuide()){
-            widgetHandler.waitForWidget("Settings", false);
-        } else if (!widgetHandler.isWidgetVisible("Unmute", false) && configureGameSettings()){
-            widgetHandler.waitForWidgetToDisappear("Mute", false);
-        } else {
-            return talkToGielinorGuide() && interactWithClosestDoor();
         }
-        return false;
-    }
 
-    private boolean talkToGielinorGuide() throws InterruptedException {
-        script.log("Talking to the Gielinor Guide");
-        NPC gielinorGuide = script.getNpcs().closest("Gielinor Guide");
-        if (gielinorGuide != null && gielinorGuide.interact("Talk-to")) {
-            waitForDialogue(script);
-            completeDialogue(script);
-            return true;
+        if (!talkedToGielinorGuideFirstTime) {
+            talkedToGielinorGuideFirstTime = talkToGielinorGuideFirstTime();
         }
-        return false;
-    }
-
-    private void waitForDialogue(Script script) {
-        script.log("Waiting for the dialogue to open");
-        Sleep.sleepUntil(() -> widgetHandler.isWidgetVisible("Click here to continue", true), 5000);
-    }
-
-    private void completeDialogue(Script script) throws InterruptedException {
-        script.log("Completing the dialogue with the Gielinor Guide");
-
-        boolean selectedExperiencedPlayer = false;
-        while (widgetHandler.isWidgetVisible("I am an experienced player.", true) ||
-                widgetHandler.isWidgetVisible("Click here to continue", true)) {
-
-            if (!selectedExperiencedPlayer && widgetHandler.isWidgetVisible("I am an experienced player.", true)) {
-                script.log("Selecting 'I am an experienced player.'");
-                widgetHandler.clickWidgetWithMessage("I am an experienced player.");
-                selectedExperiencedPlayer = true;
-            } else if (widgetHandler.isWidgetVisible("Click here to continue", true)) {
-                script.log("Clicking 'Click here to continue'");
-                widgetHandler.clickWidgetWithMessage("Click here to continue");
-            }
-
-            MethodProvider.sleep(random.nextInt(501) + 500);
+        if (talkedToGielinorGuideFirstTime && !gameSettingsConfigured) {
+            gameSettingsConfigured = configureGameSettings();
         }
+        if (gameSettingsConfigured && !talkedToGielinorGuideSecondTime) {
+            talkedToGielinorGuideSecondTime = talkToGielinorGuideSecondTime();
+        }
+        if (talkedToGielinorGuideSecondTime && !leftHouse) {
+            leftHouse = leaveHouse();
+        }
+
+        return leftHouse;
     }
 
-    private boolean configureGameSettings() throws InterruptedException {
+    private boolean talkToGielinorGuideFirstTime() {
+        List<String> dialogueOptions = Collections.singletonList("I am an experienced player.");
+        return dialogueHelper.talkToNPC("Gielinor Guide", dialogueOptions);
+    }
+
+    private boolean talkToGielinorGuideSecondTime() {
+        return dialogueHelper.continueThroughDialogue("Gielinor Guide");
+    }
+
+    private boolean configureGameSettings() {
         script.log("Configure game settings");
-        if (!script.getSettings().areRoofsEnabled() && openAndVerifySettings()){
+        if (!script.getSettings().areRoofsEnabled() && widgetHandler.openTab("Settings")){
             enableHideRoofs();
             enableShiftClickDrop();
             closeSettings();
@@ -86,20 +72,6 @@ public class GielinorGuideInteraction {
             return true;
         }
         return false;
-    }
-
-    private boolean openAndVerifySettings() throws InterruptedException {
-        while (!widgetHandler.isWidgetVisible("All Settings", false)) {
-            script.log("Trying to open settings");
-            if (widgetHandler.isWidgetVisible("Settings", false)) {
-                script.log("Opening settings tab");
-                widgetHandler.clickWidget("Settings");
-                return Sleep.sleepUntil(() -> widgetHandler.isWidgetVisible("All Settings", false), 5000);
-            } else {
-                MethodProvider.sleep(random.nextInt(501) + 1000);
-            }
-        }
-        return widgetHandler.isWidgetVisible("All Settings", false);
     }
 
     private void enableHideRoofs() {
@@ -122,7 +94,7 @@ public class GielinorGuideInteraction {
         widgetHandler.waitForWidgetToDisappear("Hide roofs", true);
     }
 
-    private void adjustAudioSettings() throws InterruptedException {
+    private void adjustAudioSettings() {
         script.log("Opening audio settings");
         widgetHandler.clickWidget("Audio");
         widgetHandler.waitForWidget("Mute", false);
@@ -130,15 +102,11 @@ public class GielinorGuideInteraction {
         widgetHandler.clickAllWidgetsWithAction("Mute");
     }
 
-    private boolean interactWithClosestDoor() {
-        RS2Object door = script.getObjects().closest(obj -> obj.getName().equals("Door"));
-        script.log("Trying to find the door");
-        if (door != null && door.interact("Open")) {
+    private boolean leaveHouse() {
+        if (objectHandler.interactWithClosestObject("Door", "Open", () -> script.myPlayer().getPosition().equals(outsideDoor))) {
             script.log("Opening door");
-            Sleep.sleepUntil(() -> script.myPlayer().getPosition().equals(outsideDoor), 5000); // Wait until moved away from the door
             return true;
         }
         return false;
     }
-
 }

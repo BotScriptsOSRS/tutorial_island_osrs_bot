@@ -3,7 +3,11 @@ package states;
 public enum ScriptState {
     CHARACTER_CREATION,
     GIELINOR_GUIDE,
+    SURVIVAL_EXPERT,
+    MASTER_CHEF,
+    QUEST_GUIDE,
+    MINING_INSTRUCTOR,
+    COMBAT_INSTRUCTOR,
     NEXT_STAGE,
-    // ...
 }
 

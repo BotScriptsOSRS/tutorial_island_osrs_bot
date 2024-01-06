@@ -10,53 +10,61 @@ public class CharacterCreation {
     private final Script script;
     private final WidgetHandler widgetHandler;
     private final NameGenerator nameGenerator;
+    private boolean nameSet = false;
+    private boolean characterSetupCompleted = false;
 
-    public CharacterCreation(Script script) {
+    public CharacterCreation(Script script, WidgetHandler widgetHandler) {
         this.script = script;
-        this.widgetHandler = new WidgetHandler(script);
+        this.widgetHandler = widgetHandler;
         this.nameGenerator = new NameGenerator();
     }
 
-    public boolean performCreation() throws InterruptedException {
-        if (!widgetHandler.isWidgetVisible("Choose display name", true) ||
-            !widgetHandler.isWidgetVisible("Confirm", false)){
+    public boolean performCreation() {
+        if (characterSetupCompleted || (!widgetHandler.isWidgetVisible("Set display name", true) &&
+                !widgetHandler.isWidgetVisible("Confirm", false))) {
             script.log("Skipping state, already completed");
             return true;
-        } else if (!isNameSet() ) {
-            attemptToSetName();
-            handleNameResponse();
         }
-        return completeCharacterSetup();
+
+        if (!nameSet) {
+            nameSet = attemptToSetName() && handleNameResponse();
+        }
+
+        if (nameSet) {
+            characterSetupCompleted = completeCharacterSetup();
+        }
+
+        return characterSetupCompleted;
     }
 
-    private boolean isNameSet() {
-        script.log("Name is not set yet");
-        return widgetHandler.isWidgetVisible("Confirm", false);
-    }
-
-    private void attemptToSetName() {
+    private boolean attemptToSetName() {
         if (widgetHandler.isWidgetVisible("*", true)) {
             String randomName = nameGenerator.generateRandomName();
             script.log("Typing name: " + randomName);
             script.getKeyboard().typeString(randomName);
+            return true;
         }
+        return false;
     }
 
-    private void handleNameResponse() {
+    private boolean handleNameResponse() {
         script.log("Wait until Set name widget is visible");
-        Sleep.sleepUntil(() -> widgetHandler.isWidgetVisible("Set name", false) ||
-                widgetHandler.isWidgetVisible("Great!", true), 5000);
+        Sleep.until(() -> widgetHandler.isWidgetVisible("Set name", false) ||
+                widgetHandler.isWidgetVisible("Great!", true));
 
         if (widgetHandler.isWidgetVisible("Great!", true)) {
             script.log("Unique name found, confirm the name");
             confirmNameSetting();
+            return true;
         } else if (widgetHandler.isWidgetVisible("Set name", false)) {
             script.log("Name already exists, pick a new name");
             pickNewName();
             widgetHandler.waitForWidget("Set name", false);
             script.log("Wait until Set name widget is visible");
             confirmNameSetting();
+            return true;
         }
+        return false;
     }
 
     private void confirmNameSetting() {
@@ -69,7 +77,7 @@ public class CharacterCreation {
         widgetHandler.getRandomWidgetWithAction("Set name").ifPresent(RS2Widget::interact);
     }
 
-    private boolean completeCharacterSetup() throws InterruptedException {
+    private boolean completeCharacterSetup() {
         script.log("Finish character setup");
         if (widgetHandler.waitForWidget("Confirm", false)) {
             widgetHandler.interactWithWidgetRandomly("Female");
