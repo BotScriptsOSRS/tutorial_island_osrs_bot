@@ -38,7 +38,7 @@ public class CharacterCreation {
     }
 
     private boolean attemptToSetName() {
-        if (widgetHandler.isWidgetVisible("*", true)) {
+        if (widgetHandler.isWidgetVisible("Enter name", false) && widgetHandler.clickWidget("Enter name")) {
             String randomName = nameGenerator.generateRandomName();
             script.log("Typing name: " + randomName);
             script.getKeyboard().typeString(randomName);
