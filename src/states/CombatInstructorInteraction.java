@@ -13,12 +13,12 @@ public class CombatInstructorInteraction {
     private final Script script;
     private final WidgetHandler widgetHandler;
     private final DialogueHelper dialogueHelper;
-    private final NPCHandler npcHandler;
-
+    private final ObjectHandler objectHandler;
     private final Area combatInstructorArea = new Area(3095, 9495, 3115, 9532);
     private final Area combatInstructorWalkToArea = new Area(3103, 9506, 3112, 9509);
+    private final Area outsideGateArea = new Area(3111, 9518, 3111, 9519);
     private final Position ratCombatPosition = new Position(3107, 9518, 0);
-    private final Position instructorPosition = new Position(3106, 9510, 0);
+    private final Position instructorPosition = new Position(3105, 9506, 0);
     private final Area finalArea = new Area(3120, 3121, 3123, 3124);
 
     private boolean talkedToCombatInstructorFirstTime = false;
@@ -31,11 +31,11 @@ public class CombatInstructorInteraction {
     private boolean completedRangedCombat = false;
     private boolean walkedToFinalArea = false;
 
-    public CombatInstructorInteraction(Script script, WidgetHandler widgetHandler, DialogueHelper dialogueHelper, NPCHandler npcHandler) {
+    public CombatInstructorInteraction(Script script, WidgetHandler widgetHandler, DialogueHelper dialogueHelper, ObjectHandler objectHandler) {
         this.script = script;
         this.widgetHandler = widgetHandler;
         this.dialogueHelper = dialogueHelper;
-        this.npcHandler = npcHandler;
+        this.objectHandler = objectHandler;
     }
 
     public boolean performInteraction() {
@@ -77,13 +77,10 @@ public class CombatInstructorInteraction {
 
     private boolean talkToCombatInstructor() {
         script.log("Talking to Combat Instructor");
-        if(widgetHandler.openTab("Combat Options")){
-            if (!combatInstructorWalkToArea.contains(script.myPlayer())){
-                script.getWalking().webWalk(instructorPosition);
-            }
-            return dialogueHelper.continueThroughDialogue("Combat Instructor");
+        if (!combatInstructorWalkToArea.contains(script.myPlayer())){
+            script.getWalking().webWalk(instructorPosition);
         }
-        return false;
+        return dialogueHelper.continueThroughDialogue("Combat Instructor");
     }
 
     private boolean equipDagger() {
@@ -92,10 +89,10 @@ public class CombatInstructorInteraction {
             widgetHandler.waitForWidget("View equipment stats", false);
             widgetHandler.clickWidget("View equipment stats");
             if (widgetHandler.waitForWidget("Equip Your Character...", true)) {
-                script.getEquipment().equipForNameThatContains(EquipmentSlot.WEAPON, "Bronze dagger");
-                Sleep.until(()-> script.getEquipment().isWearingItem(EquipmentSlot.WEAPON,"Bronze dagger"));
+                Sleep.randomSleep(500,1000);
                 script.getKeyboard().pressKey((char) KeyEvent.VK_ESCAPE);
-                return widgetHandler.waitForWidgetToDisappear("Equip Your Character...", false);
+                script.getEquipment().equipForNameThatContains(EquipmentSlot.WEAPON, "Bronze dagger");
+                return script.getEquipment().isWearingItem(EquipmentSlot.WEAPON,"Bronze dagger");
             }
         }
         return false;
@@ -106,25 +103,28 @@ public class CombatInstructorInteraction {
         script.getEquipment().equipForNameThatContains(EquipmentSlot.WEAPON, "Bronze sword");
         Sleep.until(()-> script.getEquipment().isWearingItem(EquipmentSlot.WEAPON,"Bronze sword"));
         script.getEquipment().equipForNameThatContains(EquipmentSlot.SHIELD, "Wooden shield");
-        Sleep.until(()-> script.getEquipment().isWearingItem(EquipmentSlot.SHIELD, "Bronze sword"));
+        Sleep.until(()-> script.getEquipment().isWearingItem(EquipmentSlot.SHIELD, "Wooden shield"));
         return script.getEquipment().isWearingItem(EquipmentSlot.SHIELD, "Wooden shield") &&
                 script.getEquipment().isWearingItem(EquipmentSlot.WEAPON,"Bronze sword");
     }
 
     private boolean completeMeleeCombat() {
         script.log("Completing melee combat with Giant rat");
-        script.getWalking().webWalk(ratCombatPosition);
-        return attackGiantRat();
+        if(widgetHandler.openTab("Combat Options")){
+            script.getWalking().webWalk(ratCombatPosition);
+            return attackGiantRat() && objectHandler.interactWithClosestObject("Gate", "Open", ()-> outsideGateArea.contains(script.myPlayer()));
+        }
+        return false;
     }
 
     private boolean equipBowAndArrows() {
         script.log("Equipping Shortbow and Bronze arrows");
         script.getEquipment().equipForNameThatContains(EquipmentSlot.WEAPON, "Shortbow");
         Sleep.until(() -> script.getEquipment().isWearingItem(EquipmentSlot.WEAPON, "Shortbow"));
-        script.getEquipment().equipForNameThatContains(EquipmentSlot.ARROWS, "Bronze arrows");
-        Sleep.until(() -> script.getEquipment().isWearingItem(EquipmentSlot.ARROWS, "Bronze arrows"));
+        script.getEquipment().equipForNameThatContains(EquipmentSlot.ARROWS, "Bronze arrow");
+        Sleep.until(() -> script.getEquipment().isWearingItem(EquipmentSlot.ARROWS, "Bronze arrow"));
         return script.getEquipment().isWearingItem(EquipmentSlot.WEAPON, "Shortbow") &&
-                script.getEquipment().isWearingItem(EquipmentSlot.ARROWS, "Bronze arrows");
+                script.getEquipment().isWearingItem(EquipmentSlot.ARROWS, "Bronze arrow");
     }
 
 
@@ -141,28 +141,19 @@ public class CombatInstructorInteraction {
     private boolean attackGiantRat() {
         script.log("Searching for a Giant rat to attack");
 
-        boolean attacked = npcHandler.interactWithClosestNPCWithAction("Attack", () ->
-                script.getNpcs().closest(npc -> npc.getName().equals("Giant rat") &&
-                        !npc.isUnderAttack() &&
-                        !npc.isInteracting(script.myPlayer())) != null);
+        NPC giantRat = script.getNpcs().closest(npc -> npc.getName().equals("Giant rat") &&
+                !npc.isUnderAttack() &&
+                !npc.isInteracting(script.myPlayer()));
 
-        if (attacked) {
+        if (giantRat != null && giantRat.interact("Attack") && !script.getCombat().isFighting()) {
             script.log("Attacking Giant rat");
-            boolean combatEnded = Sleep.until(() -> {
-                NPC targetedRat = script.getNpcs().closest(npc -> npc.getName().equals("Giant rat") && npc.isInteracting(script.myPlayer()));
-                return targetedRat == null || !targetedRat.exists() || !script.myPlayer().isAnimating();
-            }, 10000);
-
-            if (combatEnded) {
-                script.log("Combat ended, rat is likely dead");
-                return true; // Indicates the rat was killed
-            } else {
-                script.log("Combat did not end as expected");
-                return false; // Indicates the rat was not killed within the expected time
-            }
+            Sleep.until(giantRat::isHitBarVisible);
+            return Sleep.until(() -> giantRat.getHealthPercentCache() == 0, 60000);
         } else {
             script.log("No suitable Giant rat found or unable to attack");
-            return false; // Indicates no rat was attacked
+            return false;
         }
     }
+
+
 }

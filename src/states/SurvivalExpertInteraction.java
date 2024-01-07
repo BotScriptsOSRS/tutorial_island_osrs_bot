@@ -153,7 +153,7 @@ public class SurvivalExpertInteraction {
     private void cookShrimps() {
         if (script.getInventory().interactWithNameThatContains("Use", "Raw shrimps") &&
                 objectHandler.interactWithClosestObject("Fire", "Use", () -> script.getInventory().contains("Shrimps"))) {
-            cookedShrimps = true;
+            cookedShrimps = script.getInventory().contains("Shrimps");
         }
     }
 

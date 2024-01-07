@@ -8,6 +8,8 @@ public enum ScriptState {
     QUEST_GUIDE,
     MINING_INSTRUCTOR,
     COMBAT_INSTRUCTOR,
-    NEXT_STAGE,
+    ACCOUNT_GUIDE,
+    BROTHER_BRACE,
+    MAGIC_INSTRUCTOR,
 }
 

@@ -54,22 +54,20 @@ public class CharacterCreation {
 
         if (widgetHandler.isWidgetVisible("Great!", true)) {
             script.log("Unique name found, confirm the name");
-            confirmNameSetting();
-            return true;
+            return confirmNameSetting();
         } else if (widgetHandler.isWidgetVisible("Set name", false)) {
             script.log("Name already exists, pick a new name");
             pickNewName();
             widgetHandler.waitForWidget("Set name", false);
             script.log("Wait until Set name widget is visible");
-            confirmNameSetting();
-            return true;
+            return confirmNameSetting();
         }
         return false;
     }
 
-    private void confirmNameSetting() {
+    private boolean confirmNameSetting() {
         script.log("Confirming name");
-        widgetHandler.clickWidget("Set name");
+        return widgetHandler.clickWidget("Set name");
     }
 
     private void pickNewName() {
@@ -81,7 +79,7 @@ public class CharacterCreation {
         script.log("Finish character setup");
         if (widgetHandler.waitForWidget("Confirm", false)) {
             widgetHandler.interactWithWidgetRandomly("Female");
-            widgetHandler.interactWithAllSelectWidgets();
+            widgetHandler.interactWithSomeSelectWidgets();
             widgetHandler.clickWidget("Confirm");
         }
         return widgetHandler.waitForWidgetToDisappear("Confirm", false);

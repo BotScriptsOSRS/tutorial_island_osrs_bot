@@ -13,6 +13,9 @@ public class MainScript extends Script {
     private QuestGuideInteraction questGuideInteraction;
     private MiningInstructorInteraction miningInstructorInteraction;
     private CombatInstructorInteraction combatInstructorInteraction;
+    private AccountGuideInteraction accountGuideInteraction;
+    private BrotherBraceInteraction brotherBraceInteraction;
+    private MagicInstructorInteraction magicInstructorInteraction;
 
     @Override
     public void onStart() {
@@ -28,13 +31,16 @@ public class MainScript extends Script {
         masterChefInteraction = new MasterChefInteraction(this, objectHandler, dialogueHelper, inventoryHandler);
         questGuideInteraction = new QuestGuideInteraction(this, widgetHandler, dialogueHelper);
         miningInstructorInteraction = new MiningInstructorInteraction(this, dialogueHelper, objectHandler, widgetHandler);
-        combatInstructorInteraction = new CombatInstructorInteraction(this, widgetHandler, dialogueHelper, npcHandler);
+        combatInstructorInteraction = new CombatInstructorInteraction(this, widgetHandler, dialogueHelper, objectHandler);
+        accountGuideInteraction = new AccountGuideInteraction(this, widgetHandler, dialogueHelper, objectHandler);
+        brotherBraceInteraction = new BrotherBraceInteraction(this, widgetHandler, dialogueHelper);
+        magicInstructorInteraction = new MagicInstructorInteraction(this, widgetHandler, dialogueHelper);
 
         currentState = ScriptState.CHARACTER_CREATION;
     }
 
     @Override
-    public int onLoop() {
+    public int onLoop() throws InterruptedException {
         switch (currentState) {
             case CHARACTER_CREATION:
                 log("Create character State");
@@ -75,7 +81,26 @@ public class MainScript extends Script {
             case COMBAT_INSTRUCTOR:
                 log("Combat Instructor State");
                 if (combatInstructorInteraction.performInteraction()) {
-                    currentState = ScriptState.NEXT_STAGE;
+                    currentState = ScriptState.ACCOUNT_GUIDE;
+                }
+                break;
+            case ACCOUNT_GUIDE:
+                log("Account Guide State");
+                if (accountGuideInteraction.performInteraction()) {
+                    currentState = ScriptState.BROTHER_BRACE;
+                }
+                break;
+            case BROTHER_BRACE:
+                log("Brother Brace State");
+                if (brotherBraceInteraction.performInteraction()) {
+                    currentState = ScriptState.MAGIC_INSTRUCTOR;
+                }
+                break;
+            case MAGIC_INSTRUCTOR:
+                log("Magic Instructor State");
+                if (magicInstructorInteraction .performInteraction()) {
+                    getLogoutTab().logOut();
+                    stop();
                 }
                 break;
         }

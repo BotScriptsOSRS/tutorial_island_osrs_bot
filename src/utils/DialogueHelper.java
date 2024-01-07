@@ -40,7 +40,46 @@ public class DialogueHelper {
         return false;
     }
 
-    private void continueUntilDialogueEnds() {
+    public boolean continueDynamicDialogue(String npcName, List<String> options) {
+        script.log("Continuing dynamic dialogue with " + npcName);
+        NPC npc = script.getNpcs().closest(npcName);
+        if (npc != null && npc.interact("Talk-to")) {
+            waitForDialogue();
+            while (isAnyOptionVisible(options) || isContinueVisible()) {
+                if (!handleDialogueOptions(options)) {
+                    handleClickHereToContinue();
+                }
+                Sleep.randomSleep(500, 1000);  // Adjust the sleep duration as needed
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isAnyOptionVisible(List<String> options) {
+        for (String option : options) {
+            if (widgetHandler.isWidgetVisible(option, true)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean handleDialogueOptions(List<String> options) {
+        for (String option : options) {
+            if (widgetHandler.isWidgetVisible(option, true) && !isContinueVisible()) {
+                script.log("Selecting dialogue option: " + option);
+                return widgetHandler.clickWidgetWithMessage(option);
+            }
+        }
+        return false;
+    }
+
+    private boolean isContinueVisible() {
+        return widgetHandler.isWidgetVisible("Click here to continue", true);
+    }
+
+    public void continueUntilDialogueEnds() {
         script.log("Clicking through dialogue");
         while ( widgetHandler.isWidgetVisible("Click here to continue", true) &&
                 widgetHandler.clickWidgetWithMessage("Click here to continue")) {

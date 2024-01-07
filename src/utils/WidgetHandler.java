@@ -3,6 +3,7 @@ package utils;
 import org.osbot.rs07.api.ui.RS2Widget;
 import org.osbot.rs07.script.Script;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -66,12 +67,22 @@ public class WidgetHandler {
         });
     }
 
-    public void interactWithAllSelectWidgets() {
+    public void interactWithSomeSelectWidgets() {
         List<RS2Widget> selectWidgets = script.getWidgets().getAll().stream()
                 .filter(widget -> widget.isVisible() && widget.hasAction("Select"))
                 .collect(Collectors.toList());
+
+        // Shuffle the list to randomize the order
+        Collections.shuffle(selectWidgets);
+
+        // Determine the number of widgets to interact with (between 4 and 8)
+        int numberOfWidgetsToInteract = random.nextInt(5) + 4; // Generates a number between 4 and 8
+
+        // Limit the number of widgets based on the random number
+        selectWidgets = selectWidgets.subList(0, Math.min(numberOfWidgetsToInteract, selectWidgets.size()));
+
         for (RS2Widget widget : selectWidgets) {
-            int interactions = random.nextInt(4);
+            int interactions = random.nextInt(4); // Number of times to interact with each widget
             for (int i = 0; i < interactions; i++) {
                 if (widget.interact()) {
                     Sleep.randomSleep(200, 300);

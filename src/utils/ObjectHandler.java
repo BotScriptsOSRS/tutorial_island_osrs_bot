@@ -2,7 +2,7 @@ package utils;
 
 import org.osbot.rs07.api.map.Position;
 import org.osbot.rs07.api.model.RS2Object;
-import org.osbot.rs07.event.WebWalkEvent;
+import org.osbot.rs07.event.WalkingEvent;
 import org.osbot.rs07.script.Script;
 
 import java.util.Optional;
@@ -41,7 +41,7 @@ public class ObjectHandler {
                 Position newPosition = newPositionOptional.get();
                 script.log("Moving to new position: " + newPosition);
 
-                WebWalkEvent walkEvent = new WebWalkEvent(newPosition);
+                WalkingEvent walkEvent = new WalkingEvent(newPosition);
                 walkEvent.setMinDistanceThreshold(0); // Set the minimum distance threshold
                 script.execute(walkEvent);
 
